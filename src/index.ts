@@ -1,7 +1,9 @@
+import { graphql } from '@octokit/graphql';
+import { Octokit } from '@octokit/rest';
+
 import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
-import { Octokit } from '@octokit/rest';
-import { graphql, GraphqlResponseError } from '@octokit/graphql';
+
 import figlet from 'figlet';
 
 async function listRepositoryLanguages(owner: string, repo: string) : Promise<any> {
@@ -59,12 +61,54 @@ async function listCI(owner: string, repo: string) : Promise<any> {
   return ci;
 }
 
-function isAdvancedSecurityEnabled(repo: any) : boolean {
-  const ghas = repo['security_and_analysis']['advanced_security'];
-  if(repo.visibility !== 'public' && ghas['status'] === 'enabled') {
+function isGHASEnabled(repo: any, category: string) : boolean {
+  const ghas = repo['security_and_analysis'][category];
+  if (ghas !== undefined && ghas['status'] === 'enabled') {
     return true;
   }
   return false;
+}
+
+async function isDependabotEnabled(owner: string, repo: string, auth: string) : Promise<any> {
+	var query = `{
+		repository(name: "${repo}", owner: "${owner}") {
+			hasVulnerabilityAlertsEnabled
+		}
+	}`;
+	const result = await graphql(query, {
+    headers: {
+      authorization: `token ${auth}`
+    }
+  });
+  return result['repository']['hasVulnerabilityAlertsEnabled'];
+}
+
+async function getRepoStats(owner: string) {
+  const repos = await octokit.paginate("GET /orgs/{org}/repos", {
+    org: owner
+  });
+  
+  const stats = new Map<string, Map<string, any>>();
+  await Promise.all(repos.map(async repo => {
+    stats.set(repo.name, new Map<string, any>([
+      ['visibility', repo.visibility],
+      ['default_branch', repo.default_branch],
+      ['license', repo.license? repo.license.name : ''],
+      ['is_fork', repo.fork],
+      ['forks', repo.forks],
+      ['archived', repo.archived],
+      ['primary_language', repo.language],
+      ['languages', await listRepositoryLanguages(args.organization, repo.name)],
+      ['teams', await listRepositoryTeams(args.organization, repo.name)],
+      ['ci', await listCI(args.organization, repo.name)],
+      ['advanced_security_enabled', isGHASEnabled(repo, 'advanced_security')],
+      ['dependabot_alerts_enabled', await isDependabotEnabled(args.organization, repo.name, args.authToken.toString())],
+      ['secret_scanning_enabled', isGHASEnabled(repo, 'secret_scanning')],
+      ['push_protection_enabled', isGHASEnabled(repo, 'secret_scanning_push_protection')]
+    ]));
+  }));
+
+  return stats;
 }
 
 console.log(figlet.textSync("Ghost"));
@@ -98,28 +142,12 @@ const args = prettyargs
     .parseSync();
 
 const octokit = new Octokit({
-  auth: args.authToken
+  auth: args.authToken,
+  baseUrl: args.githubUrl.toString()
 });
 
-const repos = await octokit.paginate("GET /orgs/{org}/repos", {
-  org: args.organization
-});
+// const orgs = await octokit.paginate("GET /organizations", {
+//     per_page: 100
+//   });
 
-const stats = new Map<string, Map<string, any>>();
-await Promise.all(repos.map(async repo => {
-  stats.set(repo.name, new Map<string, any>([
-    ['visibility', repo.visibility],
-    ['default_branch', repo.default_branch],
-    ['license', repo.license? repo.license.name : ''],
-    ['is_fork', repo.fork],
-    ['forks', repo.forks],
-    ['archived', repo.archived],
-    ['primary_language', repo.language],
-    ['languages', await listRepositoryLanguages(args.organization, repo.name)],
-    ['teams', await listRepositoryTeams(args.organization, repo.name)],
-    ['ci', await listCI(args.organization, repo.name)],
-    ['ghas_enabled', isAdvancedSecurityEnabled(repo)]
-  ]));
-}));
-
-console.log(stats);
+console.log(await getRepoStats(args.organization));
