@@ -83,6 +83,50 @@ async function isDependabotEnabled(owner: string, repo: string, auth: string) : 
   return result['repository']['hasVulnerabilityAlertsEnabled'];
 }
 
+/*  //not needed if above block works//
+
+async function areDependabotAlertsEnabled(owner: string, repo: string) : Promise<any> {
+  try{
+    const response = (await octokit.rest.repos.checkVulnerabilityAlerts({owner,repo}));
+    if (response.status == 204){
+      return true;
+    }
+  }catch(error){
+    return false;
+  }
+}
+*/
+/*  meant to check if dependabot.yml file exists in repo, still need to impliment the check
+
+async function areDependabotVersionUpdatesEnabled(owner: string, repo: string) : Promise<any> {
+  const response  = await graphql({
+    query: `
+    {
+      repository(name: "${repo}", owner: "${owner}") {
+          object(expression: "HEAD:.github/") {
+              ... on Tree {
+                  entries {
+                      name
+                  }
+              }
+          }
+      }
+    }`,
+    headers: {
+      authorization: `token ${args.authToken}`,
+    },
+  });
+
+  console.log(JSON.stringify(response,null,2));
+  console.log(response['repository']['object']);
+  if(response['repository']['object'] == null){
+    return false;
+  //TODO: check if entries array contains "name": "dependabot.yml"
+  }else if (response['repository']['object']['entries']){
+    return true;
+  }
+}
+*/
 async function getRepoStats(owner: string) {
   const repos = await octokit.paginate("GET /orgs/{org}/repos", {
     org: owner
