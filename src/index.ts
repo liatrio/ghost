@@ -62,6 +62,10 @@ async function listCI(owner: string, repo: string) : Promise<any> {
 }
 
 function isGHASEnabled(repo: any, category: string) : boolean {
+  if(repo['security_and_analysis']==undefined){
+    return false;
+  }
+
   const ghas = repo['security_and_analysis'][category];
   if (ghas !== undefined && ghas['status'] === 'enabled') {
     return true;
@@ -96,8 +100,8 @@ async function areDependabotAlertsEnabled(owner: string, repo: string) : Promise
   }
 }
 */
-/*  meant to check if dependabot.yml file exists in repo, still need to impliment the check
 
+//  checks if dependabot.yml file exists in repo
 async function areDependabotVersionUpdatesEnabled(owner: string, repo: string) : Promise<any> {
   const response  = await graphql({
     query: `
@@ -117,21 +121,46 @@ async function areDependabotVersionUpdatesEnabled(owner: string, repo: string) :
     },
   });
 
-  console.log(JSON.stringify(response,null,2));
-  console.log(response['repository']['object']);
   if(response['repository']['object'] == null){
     return false;
-  //TODO: check if entries array contains "name": "dependabot.yml"
-  }else if (response['repository']['object']['entries']){
-    return true;
+  }else {
+    var entries = response['repository']['object']['entries'];
+    for(var i=0;i<entries.length;i++){
+      if (JSON.stringify(entries[i]) == JSON.stringify({"name":"dependabot.yml"})){
+        return true;
+      }
+    }
+    return false;
   }
 }
-*/
+
+async function isDependencyGraphEnabled(owner:string, repo:string) : Promise <any> {
+      const response  = await graphql({
+        query: `{
+          repository(owner:"${owner}",name:"${repo}") {
+          dependencyGraphManifests(withDependencies: true) {
+          totalCount
+          nodes {
+            filename
+          }
+         }
+       }
+     }`,
+        headers: {
+          authorization: `token ${args.authToken}`,
+          Accept: `application/vnd.github.hawkgirl-preview+json`
+        },
+      });
+      console.log(response)
+      return true;
+}
+
+
 async function getRepoStats(owner: string) {
   const repos = await octokit.paginate("GET /orgs/{org}/repos", {
     org: owner
   });
-  
+
   const stats = new Map<string, Map<string, any>>();
   await Promise.all(repos.map(async repo => {
     stats.set(repo.name, new Map<string, any>([
@@ -147,11 +176,12 @@ async function getRepoStats(owner: string) {
       ['ci', await listCI(args.organization, repo.name)],
       ['advanced_security_enabled', isGHASEnabled(repo, 'advanced_security')],
       ['dependabot_alerts_enabled', await isDependabotEnabled(args.organization, repo.name, args.authToken.toString())],
+      ['dependabot.yml_exists', await areDependabotVersionUpdatesEnabled(args.organization,repo.name)],
+      ['dependency_graph_enabled', await isDependencyGraphEnabled(args.organization, repo.name)],
       ['secret_scanning_enabled', isGHASEnabled(repo, 'secret_scanning')],
       ['push_protection_enabled', isGHASEnabled(repo, 'secret_scanning_push_protection')]
     ]));
   }));
-
   return stats;
 }
 
