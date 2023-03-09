@@ -5,6 +5,7 @@ import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
 
 import figlet from 'figlet';
+import Handlebars from 'handlebars';
 
 async function listRepositoryLanguages(owner: string, repo: string) : Promise<any> {
   const languages = (await octokit.rest.repos.listLanguages({owner, repo})).data;
@@ -61,15 +62,16 @@ async function listCI(owner: string, repo: string) : Promise<any> {
   return ci;
 }
 
-function isGHASEnabled(repo: any, category: string) : boolean {
-  const ghas = repo['security_and_analysis'][category];
-  if (ghas !== undefined && ghas['status'] === 'enabled') {
-    return true;
+function isGHASEnabled(repo: any, category: string) : string {
+  const ghas = repo['security_and_analysis'];
+  if(ghas !== undefined && ghas.hasOwnProperty(category)) {
+    return ghas[category];
   }
-  return false;
+  return 'unknown';
 }
 
 async function isDependabotEnabled(owner: string, repo: string, auth: string) : Promise<any> {
+  // TODO: build this out to get accurate status of Dependabot - I have no idea what this is actually checking against
 	var query = `{
 		repository(name: "${repo}", owner: "${owner}") {
 			hasVulnerabilityAlertsEnabled
@@ -83,11 +85,18 @@ async function isDependabotEnabled(owner: string, repo: string, auth: string) : 
   return result['repository']['hasVulnerabilityAlertsEnabled'];
 }
 
-async function getRepoStats(owner: string) {
-  const repos = await octokit.paginate("GET /orgs/{org}/repos", {
-    org: owner
-  });
-  
+async function getRepoStats(owner: string, repo?: string) {
+  let repos = [];
+  if(repo === undefined) {
+    repos = await octokit.paginate("GET /orgs/{owner}/repos", {
+      owner: owner
+    });
+  } else {
+    repos = await octokit.paginate("GET /repos/{owner}/{repo}", {
+      owner: owner,
+      repo: repo
+    });
+  }
   const stats = new Map<string, Map<string, any>>();
   await Promise.all(repos.map(async repo => {
     stats.set(repo.name, new Map<string, any>([
@@ -98,18 +107,20 @@ async function getRepoStats(owner: string) {
       ['forks', repo.forks],
       ['archived', repo.archived],
       ['primary_language', repo.language],
-      ['languages', await listRepositoryLanguages(args.organization, repo.name)],
-      ['teams', await listRepositoryTeams(args.organization, repo.name)],
-      ['ci', await listCI(args.organization, repo.name)],
-      ['advanced_security_enabled', isGHASEnabled(repo, 'advanced_security')],
-      ['dependabot_alerts_enabled', await isDependabotEnabled(args.organization, repo.name, args.authToken.toString())],
-      ['secret_scanning_enabled', isGHASEnabled(repo, 'secret_scanning')],
-      ['push_protection_enabled', isGHASEnabled(repo, 'secret_scanning_push_protection')]
+      ['languages', await listRepositoryLanguages(owner, repo.name)],
+      ['teams', await listRepositoryTeams(owner, repo.name)],
+      ['ci', await listCI(owner, repo.name)],
+      ['advanced_security', isGHASEnabled(repo, 'advanced_security')],
+      // ['dependabot_alerts_enabled', await isDependabotEnabled(owner, repo.name, args.authToken.toString())],
+      ['secret_scanning', isGHASEnabled(repo, 'secret_scanning')],
+      ['push_protection', isGHASEnabled(repo, 'secret_scanning_push_protection')]
     ]));
   }));
 
   return stats;
 }
+
+const githubPublicUrl = 'https://api.github.com';
 
 console.log(figlet.textSync("Ghost"));
 
@@ -117,17 +128,18 @@ const prettyargs = yargs(hideBin(process.argv));
 const args = prettyargs
     .wrap(prettyargs.terminalWidth())
     .scriptName('ghost')
-    .usage('$0 [options] <organization>', 'Gather intel about GitHub organizations')
-    .positional('organization', {
-      describe: 'GitHub organization to scan',
-      type: 'string'
-    })
+    .usage('$0 [options]', 'Gather intel about GitHub organizations')
     .help('help', 'Show options for this tool')
     .option('e', {
-      default: 'https://api.github.com',
+      default: githubPublicUrl,
       describe: 'GitHub API endpoint',
       type: 'string',
       alias: 'github-url'
+    })
+    .option('o', {
+      describe: 'GitHub organization',
+      type: 'string',
+      alias: 'organization'
     })
     .option('r', {
       describe: 'GitHub repository',
@@ -146,8 +158,29 @@ const octokit = new Octokit({
   baseUrl: args.githubUrl.toString()
 });
 
-// const orgs = await octokit.paginate("GET /organizations", {
-//     per_page: 100
-//   });
+let countOrgs = 0;
+let stats = {};
+if(args.organization === undefined && args.githubUrl !== githubPublicUrl) {
+  await octokit.paginate("GET /organizations", {
+    per_page: 100
+  },
+  (response) => response.data.map(async org => {
+    console.log(org.login)
+    countOrgs++;
+    stats = await getRepoStats(org.login);
+  }));
+} else if(args.organization === undefined) {
+  console.log('When using the public GitHub API, you must specify an organization.');
+  process.exit(1);
+} else {
+  countOrgs = 1;
+  if(args.repository === undefined) {
+    stats = await getRepoStats(args.organization.toString());
+  } else {
+    stats = await getRepoStats(args.organization.toString(), args.repository.toString());
+  }
+}
 
-console.log(await getRepoStats(args.organization));
+console.log(`Organizations processed: ${countOrgs}`);
+
+
