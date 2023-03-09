@@ -181,6 +181,8 @@ if(args.organization === undefined && args.githubUrl !== githubPublicUrl) {
   }
 }
 
+// TODO: write stats to CSV
+
 console.log(`Organizations processed: ${countOrgs}`);
 
 
