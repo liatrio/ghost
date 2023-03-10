@@ -15,8 +15,9 @@
     "@types/yargs": "^17.0.22",
     "cli-table3": "^0.6.3",
     "csv": "^6.2.7",
+    "csv-writer": "^1.6.0",
     "figlet": "^1.5.2",
-    "handlebars": "4.7.7",
+    "handlebars": "^4.7.7",
     "yargs": "^17.7.1"
   },
   "devDependencies": {

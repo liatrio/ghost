@@ -7,6 +7,8 @@ import { hideBin } from 'yargs/helpers';
 import figlet from 'figlet';
 import Handlebars from 'handlebars';
 
+import { createArrayCsvWriter } from 'csv-writer';
+
 async function listRepositoryLanguages(owner: string, repo: string) : Promise<any> {
   const languages = (await octokit.rest.repos.listLanguages({owner, repo})).data;
   let stats = new Map<string, number>();
@@ -117,6 +119,7 @@ async function getRepoStats(owner: string, repo?: string) {
     ]));
   }));
 
+  await writeToCSV(stats);
   return stats;
 }
 
@@ -181,7 +184,46 @@ if(args.organization === undefined && args.githubUrl !== githubPublicUrl) {
   }
 }
 
-// TODO: write stats to CSV
+// TODO: write stats to CSV scoping to orgs and improvement on data output
+async function writeToCSV(stats: Map<string, Map<string, any>>) {
+  const createCsvWriter = await createArrayCsvWriter;
+  let statkeys = [ "repository" ];
+  let data = []
+  statkeys = statkeys.concat(Array.from(Array.from(stats.values())[0].keys()));
+  for(let repository of Array.from(stats.keys())){
+    let statvalues = [];
+    statvalues.push(repository);
+    let repo_stats = stats.get(repository);
+    for(let key of Array.from( repo_stats.keys() )) {
+      let value = repo_stats.get(key);
+      if (typeof value === "object"){
+        if (value === undefined || value === null) {
+          statvalues.push(String(value));
+        }
+        else if (value instanceof Map){
+          let lang_array = []
+          for(let key of Array.from( value.keys() )) {
+            lang_array.push(key + ": " + String(value.get(key)))
+          }
+          statvalues.push(lang_array);
+        }
+        else {
+          statvalues.push(String(Object.values(value)));
+        }
+      }
+      else {
+        statvalues.push(value);
+      }
+    }
+    data.push(statvalues);
+  }
+  const csvWriter = createCsvWriter({
+    path: 'github_data.csv',
+    header: statkeys
+  });
+
+  csvWriter.writeRecords(data).then(()=> console.log('The CSV file was written successfully'));
+}
 
 console.log(`Organizations processed: ${countOrgs}`);
 

@@ -469,6 +469,11 @@ csv-stringify@^6.2.4:
   resolved "https://registry.yarnpkg.com/csv-stringify/-/csv-stringify-6.2.4.tgz#9ae7a660b771e55c09d6cf4cf936fbbdf9499962"
   integrity sha512-RVzGaBeHl0IspzOSiNr1e7XDM7ajuESlqetQbxH2pBPplIWycx0gAVclxNEa4lc91brK6LIE0PrdEoHtZYIHIQ==
 
+csv-writer@^1.6.0:
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/csv-writer/-/csv-writer-1.6.0.tgz#d0cea44b6b4d7d3baa2ecc6f3f7209233514bcf9"
+  integrity sha512-NOx7YDFWEsM/fTRAJjRpPp8t+MKRVvniAg9wQlUKx20MFrPs73WLJhFf5iteqrxNYnsy924K3Iroh3yNHeYd2g==
+
 csv@^6.2.7:
   version "6.2.7"
   resolved "https://registry.yarnpkg.com/csv/-/csv-6.2.7.tgz#29f09bcf5929ab3eaa71f5f74a5ed7d122c195f5"
@@ -774,7 +779,7 @@ grapheme-splitter@^1.0.4:
   resolved "https://registry.yarnpkg.com/grapheme-splitter/-/grapheme-splitter-1.0.4.tgz#9cf3a665c6247479896834af35cf1dbb4400767e"
   integrity sha512-bzh50DW9kTPM00T8y4o8vQg89Di9oLJVLW/KaOGIXJWP/iqCN6WKYkbNOF04vFLJhwcpYUh9ydh/+5vpOqV4YQ==
 
-handlebars@4.7.7:
+handlebars@^4.7.7:
   version "4.7.7"
   resolved "https://registry.yarnpkg.com/handlebars/-/handlebars-4.7.7.tgz#9ce33416aad02dbd6c8fafa8240d5d98004945a1"
   integrity sha512-aAcXm5OAfE/8IXkcZvCepKU3VzW1/39Fb5ZuqMtgI/hT8X2YgoMvBY5dLhq/cpOvw7Lk1nK/UF71aLG/ZnVYRA==
