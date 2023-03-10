@@ -187,18 +187,19 @@ if(args.organization === undefined && args.githubUrl !== githubPublicUrl) {
 // TODO: write stats to CSV scoping to orgs and improvement on data output
 async function writeToCSV(stats: Map<string, Map<string, any>>) {
   const createCsvWriter = await createArrayCsvWriter;
-  let statkeys = [ "repository" ];
+  let statkeys = [ 'organization', 'repository' ];
   let data = []
   statkeys = statkeys.concat(Array.from(Array.from(stats.values())[0].keys()));
   for(let repository of Array.from(stats.keys())){
     let statvalues = [];
+    statvalues.push(args.organization);
     statvalues.push(repository);
     let repo_stats = stats.get(repository);
     for(let key of Array.from( repo_stats.keys() )) {
       let value = repo_stats.get(key);
       if (typeof value === "object"){
         if (value === undefined || value === null) {
-          statvalues.push(String(value));
+          statvalues.push(value);
         }
         else if (value instanceof Map){
           let lang_array = []
@@ -226,5 +227,3 @@ async function writeToCSV(stats: Map<string, Map<string, any>>) {
 }
 
 console.log(`Organizations processed: ${countOrgs}`);
-
-
