@@ -103,6 +103,7 @@ async function getRepoStats(owner: string, repo?: string) {
   await Promise.all(repos.map(async repo => {
     stats.set(repo.name, new Map<string, any>([
       ['visibility', repo.visibility],
+      ['size', repo.size],
       ['default_branch', repo.default_branch],
       ['license', repo.license? repo.license.name : ''],
       ['is_fork', repo.fork],
