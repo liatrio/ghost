@@ -111,7 +111,7 @@ async function getRepoStats(owner: string, repo?: string) {
       ['archived', repo.archived],
       ['primary_language', repo.language],
       ['languages', await listRepositoryLanguages(owner, repo.name)],
-      ['teams', await listRepositoryTeams(owner, repo.name)],
+      //['teams', await listRepositoryTeams(owner, repo.name)],
       ['ci', await listCI(owner, repo.name)],
       ['advanced_security', isGHASEnabled(repo, 'advanced_security')],
       // ['dependabot_alerts_enabled', await isDependabotEnabled(owner, repo.name, args.authToken.toString())],
